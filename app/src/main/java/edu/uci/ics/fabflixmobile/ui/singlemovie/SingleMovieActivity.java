@@ -24,6 +24,13 @@ public class SingleMovieActivity extends AppCompatActivity {
 
     private TextView yearText;
 
+    private TextView directorText;
+
+    private TextView genresText;
+
+    private TextView starsText;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,12 +38,21 @@ public class SingleMovieActivity extends AppCompatActivity {
 
         String title = getIntent().getStringExtra("title");
         short year = getIntent().getShortExtra("year", (short) 0);
+        String director = getIntent().getStringExtra("director");
+        String genres = getIntent().getStringExtra("genres");
+        String stars = getIntent().getStringExtra("stars");
 
         titleText = findViewById(R.id.title);
         yearText = findViewById(R.id.year);
+        directorText = findViewById(R.id.director);
+        genresText = findViewById(R.id.genres);
+        starsText = findViewById(R.id.stars);
 
         titleText.setText(title);
         yearText.setText(String.valueOf(year));
+        directorText.setText(director);
+        genresText.setText(genres);
+        starsText.setText(stars);
 
         Button homeButton = findViewById(R.id.home);
 
@@ -45,8 +61,7 @@ public class SingleMovieActivity extends AppCompatActivity {
             public void onClick(View v) {
                 // Handle button click event
                 // Add your logic here
-                Intent movieListIntent = new Intent(SingleMovieActivity.this, MovieListActivity.class);
-                startActivity(movieListIntent);
+                finish();
             }
         });
     }

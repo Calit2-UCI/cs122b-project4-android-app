@@ -7,9 +7,19 @@ public class Movie {
     private final String name;
     private final short year;
 
-    public Movie(String name, short year) {
-        this.name = name;
+    private final String director;
+
+    private final String genres;
+
+    private final String stars;
+
+    public Movie(String title, short year, String director, String genres, String stars) {
+        this.name = title;
         this.year = year;
+        this.director = director;
+        this.genres = genres;
+        this.stars = stars;
+
     }
 
     public String getName() {
@@ -18,5 +28,17 @@ public class Movie {
 
     public short getYear() {
         return year;
+    }
+
+    public String getDirector() {
+        return director;
+    }
+
+    public String getGenres() {
+        return genres;
+    }
+
+    public String getStars() {
+        return stars;
     }
 }

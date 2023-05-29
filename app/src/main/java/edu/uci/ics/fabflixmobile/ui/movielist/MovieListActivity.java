@@ -4,9 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ListView;
-import android.widget.Toast;
+import android.widget.*;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -24,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import android.widget.SearchView;
 import edu.uci.ics.fabflixmobile.ui.login.LoginActivity;
 import edu.uci.ics.fabflixmobile.ui.search.SearchActivity;
 import edu.uci.ics.fabflixmobile.ui.singlemovie.SingleMovieActivity;
@@ -42,20 +39,44 @@ public class MovieListActivity extends AppCompatActivity {
     private final String domain = "s23_122b_kickin_war";
     private final String baseURL = "http://" + host + ":" + port + "/" + domain;
 
+    private ProgressBar progressBar;
+
+    private String title_query = "";
+
+    private EditText searchQuery;
+
+    private RequestQueue queue;
+    private String lastRequestUrl;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_movielist);
 
+        // Initialize the progress bar
+        progressBar = findViewById(R.id.progress_bar);
+        progressBar.setVisibility(View.VISIBLE);
+
         Button searchButton = findViewById(R.id.search_page);
         Button prevButton = findViewById(R.id.prev);
         Button nextButton = findViewById(R.id.next);
 
+        searchQuery = findViewById(R.id.query);
+
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent SearchActivityPage = new Intent(MovieListActivity.this, SearchActivity.class);
-                startActivity(SearchActivityPage);
+                // Handle button click event
+                // Add your logic here
+                String newQuery = searchQuery.getText().toString();
+                if (!newQuery.equals(title_query)) {
+                    title_query = newQuery;
+                    fetchMovies(1);
+                    Log.d("onClick.info--->", "searchButton: Calling fetchMovies");
+                    Log.d("onClick.info--->", "searchButton: " + title_query);
+                }
             }
         });
 
@@ -63,6 +84,7 @@ public class MovieListActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 fetchMovies(currentPage - 1);
+                Log.d("nextButton.info--->", "nextButton: " + "Calling fetchMovies");
             }
         });
 
@@ -70,16 +92,56 @@ public class MovieListActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 fetchMovies(currentPage + 1);
+                Log.d("nextButton.info--->", "nextButton: " + "Calling fetchMovies");
             }
         });
 
-        fetchMovies(currentPage);
+        queue = NetworkManager.sharedManager(this).queue;
+
+        if (title_query.equals("")) {
+            fetchMovies(currentPage);
+            Log.d("onCreate.info--->", "search title: " + title_query);
+        }
+//        if (!moviesFetched){
+//            fetchMovies(currentPage);
+//            moviesFetched = true;
+//        }
+
+
     }
 
+
     private void fetchMovies(int page) {
+
+        queue.cancelAll(this);
+
+        Button searchButton = findViewById(R.id.search_page);
+        searchButton.setEnabled(false);
+
+        // Show the progress bar
+        progressBar.setVisibility(View.VISIBLE);
+
+        // Hide the movie list view
+        ListView listView = findViewById(R.id.list);
+        listView.setVisibility(View.GONE);
+
+        Log.d("fetchMovies.info--->", "search title: " + title_query);
+
+        this.currentPage = page;
+
+
         Log.d("fetchMovies.info--->", "current page: " + currentPage);
-        final RequestQueue queue = NetworkManager.sharedManager(this).queue;
-        final String url = baseURL + "/api/movielist?page=" + page + "&moviePerPage=" + PAGE_SIZE;
+        Log.d("fetchMovies.info--->", "current page: " + "Fetch Movies Is Ran");
+
+        final String url = baseURL + "/api/androidmovielist?title=" + title_query + "&page=" + currentPage + "&moviePerPage=" + PAGE_SIZE;
+
+        // Check if the request URL is the same as the last request
+        if (url.equals(lastRequestUrl)) {
+            // A request with the same URL is already pending, do not send another request
+            return;
+        }
+
+        lastRequestUrl = url;
 
         // Request movies using GET method
         final StringRequest movieListRequest = new StringRequest(
@@ -89,7 +151,11 @@ public class MovieListActivity extends AppCompatActivity {
                     try {
                         // Parse the JSON response and retrieve the movie data
 
+                        Log.d("fetchMovies.info--->", "Movie Array: " + response);
+
                         JSONArray movieArray = new JSONArray(response);
+
+                        Log.d("fetchMovies.info--->", "Movie Array: " + movieArray);
 
                         JSONObject lastObject = movieArray.getJSONObject(movieArray.length() - 1);
 
@@ -104,7 +170,12 @@ public class MovieListActivity extends AppCompatActivity {
                             JSONObject movieObject = movieArray.getJSONObject(i);
                             String title = movieObject.getString("movie_title");
                             int year = movieObject.getInt("movie_year");
-                            movies.add(new Movie(title, (short) year));
+                            String director = movieObject.getString("movie_director");
+
+                            String genres = movieObject.getString("movie_genres").replace(",", ", ");
+                            String stars = movieObject.getString("stars_name").replace(",", ", ");
+
+                            movies.add(new Movie(title, (short) year, director, genres, stars));
                         }
 
                         // Update the current page number
@@ -115,21 +186,41 @@ public class MovieListActivity extends AppCompatActivity {
 
                         // Enable/disable pagination buttons based on current page
                         updatePaginationButtons(currentPage, totalCount);
+
+                        // Hide the progress bar
+                        progressBar.setVisibility(View.GONE);
+
+                        // Show the movie list view
+                        listView.setVisibility(View.VISIBLE);
+
+                        searchButton.setEnabled(true);
+
+
                     } catch (JSONException e) {
                         Log.d("fetchMovies.error", "Error parsing JSON response: " + e.getMessage());
                     }
                 },
                 error -> {
                     Log.d("fetchMovies.error", error.toString());
+                    // Hide the progress bar
+                    progressBar.setVisibility(View.GONE);
+
+                    searchButton.setEnabled(true);
+
                 }
         );
 
+
+
         // Set a custom timeout duration for the request
-        int timeoutMilliseconds = 10000; // Example: Set timeout to 10 seconds
+        int timeoutMilliseconds = 85000; // Example: Set timeout to 10 seconds
         movieListRequest.setRetryPolicy(new DefaultRetryPolicy(timeoutMilliseconds,
-                DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+                0, 1.0f
+        ));
         // Add the request to the queue
         queue.add(movieListRequest);
+
+
     }
     ;
         // important: queue.add is where the login request is actually sent
@@ -148,15 +239,6 @@ public class MovieListActivity extends AppCompatActivity {
     }
 
 
-    private ArrayList<Movie> createDummyMovies(int page) {
-        ArrayList<Movie> movies = new ArrayList<>();
-        int startIndex = (page - 1) * PAGE_SIZE + 1;
-        for (int i = startIndex; i <= startIndex + PAGE_SIZE - 1; i++) {
-            movies.add(new Movie("Movie " + i, (short) (2000 + i)));
-        }
-        return movies;
-    }
-
     private void updateMovieList(ArrayList<Movie> movies) {
         MovieListViewAdapter adapter = new MovieListViewAdapter(this, movies);
         ListView listView = findViewById(R.id.list);
@@ -169,6 +251,9 @@ public class MovieListActivity extends AppCompatActivity {
             Intent SingleMoviePage = new Intent(MovieListActivity.this, SingleMovieActivity.class);
             SingleMoviePage.putExtra("title", movie.getName());
             SingleMoviePage.putExtra("year", movie.getYear());
+            SingleMoviePage.putExtra("director", movie.getDirector());
+            SingleMoviePage.putExtra("genres", movie.getGenres());
+            SingleMoviePage.putExtra("stars", movie.getStars());
             startActivity(SingleMoviePage);
         });
     }
